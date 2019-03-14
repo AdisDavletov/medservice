@@ -1,4 +1,7 @@
-from medicin import Medicine
+from random import randint
+
+MIN_COST, MAX_COST = 100, 10000
+REQUEST_NUM = 30
 
 
 class Stock(object):
@@ -90,6 +93,7 @@ class MedicineWareHouse(object):
         self.min_instances = min_instances
         self.quantity = dict((x.name(), 0) for x in medicines_set)
         self.medicines_to_request = dict((x.name(), False) for x in medicines_set)
+        self.costs = dict((x.name(), randint(MIN_COST, MAX_COST)) for x in medicines_set)
     
     def move_to_sale(self):
         to_move = len([x for x in self.stock.get_ttl() if x.ttl < 31])
@@ -100,13 +104,14 @@ class MedicineWareHouse(object):
         self.update_quantity()
     
     def get_medicine(self, medicine, quantity=1, is_sale=True):
+        medicine = [x for x in self.medicines_set if self.medicine_equality(x, medicine)]
         if is_sale:
             result = self.sale_stock.extract_element(element=medicine, quantity=quantity)
         else:
             result = self.stock.extract_element(element=medicine, quantity=quantity)
         self.update_quantity()
-        return result
-    
+        return result[0], result[1], self.costs[medicine.name()] * quantity * (0.5 if is_sale else 1)
+
     def update_quantity(self):
         stock_quantity = self.stock.get_quantity()
         sale_quantity = self.sale_stock.get_quantity()
@@ -114,78 +119,33 @@ class MedicineWareHouse(object):
             quantity = stock_quantity[x] + sale_quantity[x]
             self.quantity[x] = quantity
             if quantity < self.min_instances:
-                self.medicines_to_request[x] = True
+                self.medicines_to_request[x] = self.costs[x] * REQUEST_NUM
             else:
-                self.medicines_to_request[x] = False
+                self.medicines_to_request[x] = 0
     
     def goto_next_day(self):
         self.stock.decrease_ttl()
         self.sale_stock.decrease_ttl()
         self.stock.clear()
         self.sale_stock.clear()
+        self.move_to_sale()
         self.update_quantity()
-        
-    def required_medicines(self):
-        return [x for x, v in self.medicines_to_request.items() if v]
     
-    # def calculate_quantity(self):
-    #     quantity = {}
-    #     for medicine in self.medicines:
-    #         quantity[medicine.id()] = \
-    #             len([x for x in self.stock if x == medicine])
-    #     return quantity
-    #
-    # def sanity_check(self):
-    #     assert all([(x.form is not None) and (x.dosage is not None) for x in self.medicines])
-    #     assert all([medicine in self.medicines for medicine in self.stock])
-    #
-    # def add_medicines(self, medicines):
-    #     assert all([(x.form is not None) and (x.dosage is not None) for x in medicines])
-    #     self.stock.extend(medicines)
-    #
-    # def get_medicines(self, order_list):
-    #     assert all([order.name in [x.name for x in self.medicines] for order, _ in order_list])
-    #
-    #     def medicine_equality(medicine, order):
-    #         eq = medicine.name == order.name
-    #         if (order.form is None) and (order.dosage is not None):
-    #             eq = eq and (medicine.dosage == order.dosage)
-    #         elif (order.form is not None) and (order.dosage is None):
-    #             eq = eq and (medicine.form == order.form)
-    #         else:
-    #             eq = medicine.id() == order.id()
-    #         return eq
-    #
-    #     medicines = []
-    #     for order, quantity in order_list:
-    #         filtered = [i for i, medicine in enumerate(self.stock) if medicine_equality(medicine, order)]
-    #         filtered = sorted(filtered, key=lambda x: x.ttl)
-    #         filtered = filtered[:quantity]
-    #         extracted = [self.stock.pop(i) for i in filtered]
-    #         medicines.append((extracted[0], quantity - (quantity - len(extracted))))
-    #
-    #     self.quantity = self.calculate_quantity()
-    #     return medicines
-    #
-    # def utilize_old_medicines(self):
-    #     self.stock = [medicine for medicine in self.stock if medicine.ttl == 0]
-    #     self.quantity = self.calculate_quantity()
-    #
-    # def get_medicine_by_id_1(self, id_):
-    #     name, form, dosage = id_.split('_')
-    #     return [x for x in self.medicines if x == Medicine(name, form, dosage)][0]
-    #
-    # def get_medicine_by_id_2(self, id_):
-    #     medicine = None
-    #     name, form, dosage = id_.split('_')
-    #     filtered = [(i, x) for i, x in enumerate(self.stock) if x == Medicine(name, form, dosage)]
-    #     if len(filtered) >= 0:
-    #         medicine = self.stock.pop(filtered[0][0])
-    #         self.quantity[id_] -= 1
-    #     return medicine
+    def required_medicines(self):
+        return [(x, v) for x, v in self.medicines_to_request.items() if v > 0]
+    
+    def medicine_equality(self, medicine, order):
+        eq = medicine.name == order.name
+        if (order.form is None) and (order.dosage is not None):
+            eq = eq and (medicine.dosage == order.dosage)
+        elif (order.form is not None) and (order.dosage is None):
+            eq = eq and (medicine.form == order.form)
+        else:
+            eq = medicine.name() == order.name()
+        return eq
 
 
-class OrderList(object):
+class Order(object):
     def __init__(self, phone_number, address, order_list, discount_id=None):
         self.phone_number = phone_number
         self.address = address

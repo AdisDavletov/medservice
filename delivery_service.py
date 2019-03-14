@@ -9,6 +9,9 @@ class DeliveryService(object):
         for _ in range(self.min_couriers):
             self.hire()
     
+    def goto_next_day(self):
+        self.couriers_list = [x.reset() for x in self.couriers_list]
+    
     def hire(self):
         self.couriers_list.append(Courier(self.max_orders_pc))
         self.n_hired_couriers += 1
@@ -40,3 +43,4 @@ class Courier(object):
     
     def reset(self):
         self.n_orders_done = 0
+        return self
