@@ -2,24 +2,8 @@ from random import randint, shuffle
 
 from customer import Customer
 from delivery_service import DeliveryService
-from medicin import Medicine
+from medicine import Medicine
 from medicine_ware_house import MedicineWareHouse
-
-MEDICINE_NAMES = ["Белосалик", "Акридерм", "Бепантен", "Декспантенол", "Бетасерк",
-                  "Быструмгель", "Кетопрофен", "Диклофенак", "Вольтарен", "Гастрозол",
-                  "Омепразол", "Детралекс", "Риностоп", "Зантак", "Ранитидин", "Зиртек",
-                  "Цетиринакс", "Зовиракс", "Ацикловир", "Иммунал", "Эхинацея", "Имодиум",
-                  "Лоперамид", "Йодомарин", "Кавинтон", "Винпоцетин", "Кларитин", "Лорагексал",
-                  "Кларитромицин", "Лазолван", "Амброксол", "Ламизил", "Тербинафин", "Ломилан",
-                  "Лорагексал", "Максидекс", "Дексаметазон", "Мезим", "Панкреатин", "Но-шпа"]
-
-MEDICINE_FORMS = ["Таблетки", "Суспензия", "Спрей", "Сироп", "Мазь", "Капли"]
-CUSTOMER_NAMES = ["Маша", "Петя", "Паша", "Катя", "Марина",
-                  "Коля", "Вася", "Даша", "Лена", "Боря", "Аркадий",
-                  "Настя", "Маруся", "Геракл", "Лев", "Марья", "Игорь",
-                  "Матрена", "Никита", "Николай", "Матвей", "Алена", "Кира",
-                  "Алиса", "Дмитрий", "Олег", "Диана", "Света", "Жора"]
-STREET_NAMES = ['Воробьевы Горы', 'Мичуринский Проспект', 'Лебедева', 'Менделеева', 'Ломоносовский Проспект']
 
 
 class Model(object):
@@ -79,7 +63,7 @@ class Model(object):
         self.create_periodic_customers()
         medicines = list(set([self.create_medicine(random=True) for _ in range(self.medicines_cnt * 5)]))[
                     :self.medicines_cnt]
-        self.medicine_ware_house = MedicineWareHouse(medicines, medicines * self.request_inst_cnt,
+        self.medicine_ware_house = MedicineWareHouse(medicines,
                                                      min_instances=self.medicine_ware_house_min_inst)
     
     def run(self):

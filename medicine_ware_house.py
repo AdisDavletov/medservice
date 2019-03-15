@@ -1,5 +1,3 @@
-from random import randint
-
 MIN_COST, MAX_COST = 100, 10000
 REQUEST_NUM = 30
 
@@ -18,7 +16,7 @@ class Stock(object):
         return self.quantity[element.name()]
     
     def get_elements_set(self):
-        return [tuple(x.name().split()) for x in self.elements_set]
+        return [tuple(x.name().split('_')) for x in self.elements_set]
     
     def get_available_elements(self):
         result = set([elem for elem, count in self.quantity.items() if count > 0])
@@ -93,7 +91,12 @@ class MedicineWareHouse(object):
         self.min_instances = min_instances
         self.quantity = dict((x.name(), 0) for x in medicines_set)
         self.medicines_to_request = dict((x.name(), False) for x in medicines_set)
-        self.costs = dict((x.name(), randint(MIN_COST, MAX_COST)) for x in medicines_set)
+    
+    def get_medicines_set(self):
+        return self.stock.get_elements_set()
+    
+    def get_available_medicines(self):
+        return self.stock.get_available_elements(), self.sale_stock.get_available_elements()
     
     def move_to_sale(self):
         to_move = len([x for x in self.stock.get_ttl() if x.ttl < 31])
@@ -110,8 +113,8 @@ class MedicineWareHouse(object):
         else:
             result = self.stock.extract_element(element=medicine, quantity=quantity)
         self.update_quantity()
-        return result[0], result[1], self.costs[medicine.name()] * quantity * (0.5 if is_sale else 1)
-
+        return result[0], result[1]
+    
     def update_quantity(self):
         stock_quantity = self.stock.get_quantity()
         sale_quantity = self.sale_stock.get_quantity()
@@ -132,7 +135,7 @@ class MedicineWareHouse(object):
         self.update_quantity()
     
     def required_medicines(self):
-        return [(x, v) for x, v in self.medicines_to_request.items() if v > 0]
+        return [x for x, v in self.medicines_to_request.items() if v]
     
     def medicine_equality(self, medicine, order):
         eq = medicine.name == order.name
@@ -145,7 +148,7 @@ class MedicineWareHouse(object):
         return eq
 
 
-class Order(object):
+class OrderList(object):
     def __init__(self, phone_number, address, order_list, discount_id=None):
         self.phone_number = phone_number
         self.address = address
