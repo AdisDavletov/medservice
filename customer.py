@@ -10,7 +10,7 @@ class Customer(object):
         self.period = period
     
     def id(self):
-        return '_'.join([str(self.name), str(self.address), str(self.phone_number)])
+        return '_'.join([str(self.name), str(self.address), str(self.phone_number), str(self.discount_id)])
     
     def __eq__(self, other):
         return self.id() == other.id()

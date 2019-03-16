@@ -1,4 +1,4 @@
-from random import randint, shuffle
+from random import randint, sample
 
 from customer import Customer
 from delivery_service import DeliveryService
@@ -50,7 +50,7 @@ class Model(object):
                                "Настя", "Маруся", "Геракл", "Лев", "Марья", "Игорь",
                                "Матрена", "Никита", "Николай", "Матвей", "Алена", "Кира",
                                "Алиса", "Дмитрий", "Олег", "Диана", "Света", "Жора"]
-        self.n_periodic_customers = 7
+        self.n_regular_customers = 7
         streets = ['Воробьевы Горы', 'Мичуринский Проспект', 'Лебедева', 'Менделеева', 'Ломоносовский Проспект']
         self.customer_addresses = [streets[randint(0, len(streets))] + f', {randint(0, 100)}' for _ in
                                    range(100)]
@@ -58,16 +58,17 @@ class Model(object):
         self.request_list = []
         self.request_time_min = 1
         self.request_time_max = 3
+        self.db = {}
     
-    def create_medicine_ware_house(self):
-        self.create_periodic_customers()
+    def create_medicine_warehouse(self):
         medicines = list(set([self.create_medicine(random=True) for _ in range(self.medicines_cnt * 5)]))[
                     :self.medicines_cnt]
         self.medicine_ware_house = MedicineWareHouse(medicines,
                                                      min_instances=self.medicine_ware_house_min_inst)
     
     def run(self):
-        self.create_medicine_ware_house()
+        self.create_medicine_warehouse()
+        self.create_regular_customers()
         self.delivery_service = DeliveryService()
         for day in range(days_cnt):
             self.run_day()
@@ -97,6 +98,7 @@ class Model(object):
     
     def run_day(self):
         for _ in range(self.check_per_day_cnt):
+            pass
     
     def deliver_orders(self):
         self.delivery_service.distribute(self.order_list)
@@ -118,27 +120,32 @@ class Model(object):
         address = self.customer_addresses[randint(0, len(self.customer_addresses))]
         phone_number = ''.join(['+7999'] + [randint(0, 9) for _ in range(7)])
         discount_id = None
-        periodic_medicines = None
+        regular_medicines = None
         period = None
         
-        return Customer(name, address, phone_number, discount_id, periodic_medicines, period)
+        return Customer(name, address, phone_number, discount_id, regular_medicines, period)
     
-    def create_periodic_customers(self):
-        names = shuffle(self.customer_names)[:self.n_periodic_customers]
-        addresses = shuffle(self.customer_addresses)[:self.n_periodic_customers]
-        phones = list(set([''.join(['+7923'] + [randint(0, 9) for _ in range(7)]) for _ in range(100)]))[
-                 :self.n_periodic_customers]
-        for name, address, phone in zip(names, addresses, phones):
-            discount_id = eval(''.join([1] + [randint(0, 9) for _ in range(6)]))
-            periodic_medicines = [(self.medicine_ware_house.medicines[
-                                       randint(0, len(self.medicine_ware_house.medicines))],
-                                   randint(1, self.periodic_max_quantity)) for _ in
-                                  range(randint(1, self.order_max_medicines_quantity))]
-            period = randint(self.medicine_min_period, self.medicine_max_period)
-            
-            self.periodic_customers.append(
-                Customer(name, address, phone, discount_id, periodic_medicines, period))
+    def create_regular_customers(self):
+        self.db['regular_medicines'] = {}
+        names = sample(self.customer_names, len(self.n_regular_customers))
+        addresses = sample(self.customer_addresses, self.n_regular_customers)
+        phones, discount_ids = set(), set()
+        while len(phones) < len(names):
+            phones.add('+7' + ''.join([str(x) for x in sample(range(0, 10), 10)]))
+            discount_ids.add(''.join([str(x) for x in sample(range(0, 10), 5)]))
+        phones, discount_ids = list(phones), list(discount_ids)
+        medicines_set = self.medicine_ware_house.get_medicines_set()
+        for name, address, phone, discount_id in zip(names, addresses, phones, discount_ids):
+            regular_medicines = [
+                (medicines_set[randint(0, len(medicines_set))], randint(1, self.periodic_max_quantity),
+                 randint(self.medicine_min_period, self.medicine_max_period)) for _ in
+                range(randint(1, self.order_max_medicines_quantity))
+            ]
+            customer = '_'.join([name, address, phone])
+            self.db['regular_medicines'][customer] = regular_medicines
+            self.db['discount_ids'][customer] = discount_id
     
     def create_order_list(self):
+        
         return [(self.create_medicine(random=True), randint(1, self.order_max_medicines_quantity)) for _ in
                 range(randint(1, self.order_max_medicines))]
