@@ -47,8 +47,7 @@ class Model(object):
         
         self.medicine_min_period = 3
         self.medicine_max_period = 7
-        self.periodic_customers = []
-        self.periodic_max_quantity = 20
+
         self.order_max_medicines_quantity = 5
         self.order_max_medicines = 4
         self.request_inst_cnt = 30
@@ -63,12 +62,32 @@ class Model(object):
         streets = ['Воробьевы Горы', 'Мичуринский Проспект', 'Лебедева', 'Менделеева', 'Ломоносовский Проспект']
         self.customer_addresses = [streets[randint(0, len(streets) - 1)] + f', {randint(0, 100)}' for _ in
                                    range(100)]
-        self.orders_list = []
         self.request = {}
+        self.orders_list = []
         self.request_time_min = 1
         self.request_time_max = 3
         self.db = {}
-        
+      
+    def run(self):
+        self.init()
+        for day in range(self.total_days):
+            self.run_day()
+    
+    def init(self):
+        self.init_db()
+        self.generate_medicine_warehouse()
+        self.generate_medicines_costs()
+        self.generate_regular_customers()
+        self.generate_delivery_service()
+    
+    def init_db(self):
+        self.db['regular_medicines'] = {}
+        self.db['discount_ids'] = {}
+        self.db['medicines_costs'] = {}
+        self.db['ttls'] = {}
+        self.db['incomes'] = {}
+        self.db['expenses'] = {}
+        self.db['couriers_overloading'] = {}
     
     def generate_medicine_warehouse(self):
         medicines_set = set()
@@ -85,10 +104,70 @@ class Model(object):
         for medicine in medicines_set:
             self.db['medicines_costs'][medicine.id()] = randint(self.medicine_min_price, self.medicine_max_price)
     
+    def generate_regular_customers(self):
+        names = sample(self.customer_names, self.n_regular_customers)
+        addresses = sample(self.customer_addresses, self.n_regular_customers)
+        phones, discount_ids = set(), set()
+        while len(phones) < len(names):
+            phones.add(self.generate_phone())
+        while len(discount_ids) < len(names):
+            discount_ids.add(self.generate_discount_id())
+        phones, discount_ids = list(phones), list(discount_ids)
+        medicines_set = self.medicine_ware_house.get_medicines_set()
+        for name, address, phone, discount_id in zip(names, addresses, phones, discount_ids):
+            regular_medicines = [
+                (medicines_set[randint(0, len(medicines_set) - 1)], randint(1, self.order_max_medicines),
+                 randint(self.medicine_min_period, self.medicine_max_period)) for _ in
+                range(randint(1, self.order_max_medicines_quantity))
+            ]
+            customer = '_'.join([name, address, phone])
+            self.db['regular_medicines'][customer] = regular_medicines
+            self.db['discount_ids'][customer] = discount_id
+    
     def generate_delivery_service(self):
         self.delivery_service = DeliveryService(min_couriers=self.min_couriers_cnt, min_orders_pc=self.min_orders_pc,
                                                 max_orders_pc=self.max_orders_pc)
     
+    def run_day(self):
+        self.fulfill_request()
+        self.receive_orders()
+        self.add_regular_orders()
+        self.handle_orders()
+        self.deliver_orders()
+        self.goto_next_day()
+        self.medicine_ware_house.update_quantities()
+        self.request_medicines()
+    
+    def fulfill_request(self):
+        for medicine in self.request:
+            if self.request[medicine] == 0:
+                self.request[medicine] = -1
+                medicine = self.medicine_by_id(medicine)
+                self.medicine_ware_house.add_medicine(medicine, self.request_inst_cnt)
+                self.db['expenses'][self.curr_day] = self.db['medicines_costs'][medicine.id()] * self.request_inst_cnt
+                
+    def receive_orders(self):
+        self.db[self.curr_day] = {}
+        self.db[self.curr_day]['quantities'] = dict(self.medicine_ware_house.get_quantities())
+        self.db[self.curr_day]['requests'] = self.get_requests_status()
+        orders_cnt = randint(self.orders_min_cnt, self.orders_max_cnt)
+        self.orders_list = []
+        for _ in range(orders_cnt):
+            order = self.generate_order(is_sale=self.is_sale())
+            self.orders_list.append(order)
+
+    def add_regular_orders(self):
+        for customer in self.db['regular_medicines']:
+            order = []
+            for medicine, quantity, period in self.db['regular_medicines'][customer]:
+            
+                if self.curr_day % period == 0:
+                    order.append((medicine, quantity))
+            if len(order) > 0:
+                name, address, phone = customer.split('_')
+                discount_id = self.db['discount_ids'][customer]
+                self.orders_list.append(Order(phone, address, order, discount_id, is_sale=False, regular=True))
+
     def handle_orders(self):
         daily_income = 0.0
         orders, orders_cnt = defaultdict(set), defaultdict(int)
@@ -123,41 +202,11 @@ class Model(object):
         self.db[self.curr_day]['resolved_orders'] = resolved_orders
         self.db[self.curr_day]['orders_cnt'] = orders_cnt
         self.db[self.curr_day]['resolved_orders_cnt'] = resolved_orders_cnt
-        # if daily_income == 0.0:
-        #     raise ValueError()
-    
-    def add_regular_orders(self):
-        for customer in self.db['regular_medicines']:
-            order = []
-            for medicine, quantity, period in self.db['regular_medicines'][customer]:
-                
-                if self.curr_day % period == 0:
-                    order.append((medicine, quantity))
-            if len(order) > 0:
-                name, address, phone = customer.split('_')
-                discount_id = self.db['discount_ids'][customer]
-                self.orders_list.append(Order(phone, address, order, discount_id, is_sale=False, regular=True))
-    
-    def run(self):
-        self.init()
-        for day in range(self.total_days):
-            self.run_day()
-    
-    def fulfill_request(self):
-        for medicine in self.request:
-            if self.request[medicine] == 0:
-                self.request[medicine] = -1
-                medicine = self.medicine_by_id(medicine)
-                self.medicine_ware_house.add_medicine(medicine, self.request_inst_cnt)
-                self.db['expenses'][self.curr_day] = self.db['medicines_costs'][medicine.id()] * self.request_inst_cnt
-    
-    def request_medicines(self):
-        required_medicines = self.medicine_ware_house.medicines_to_request
-        for medicine, is_required in required_medicines.items():
-            if is_required:
-                if medicine not in self.request or self.request[medicine] == -1:
-                    self.request[medicine] = randint(self.request_time_min, self.request_time_max)
-    
+
+    def deliver_orders(self):
+        self.delivery_service.distribute(self.orders_list)
+        self.db['couriers_overloading'][self.curr_day] = self.delivery_service.get_overloading()
+
     def goto_next_day(self):
         self.curr_day += 1
         self.medicine_ware_house.goto_next_day()
@@ -166,118 +215,13 @@ class Model(object):
             if self.request[medicine] > 0:
                 self.request[medicine] -= 1
     
-    def is_sale(self):
-        idx = 0 if randint(1, 100) > 35 else 1
-        return [True, False][idx]
-    
-    def run_day(self):
-        self.fulfill_request()
-        self.receive_orders()
-        self.add_regular_orders()
-        self.handle_orders()
-        self.deliver_orders()
-        print(
-            f'day: {self.curr_day}\nincome: {self.db["incomes"][self.curr_day]}, expenses: {self.db["expenses"][self.curr_day] if self.curr_day in self.db["expenses"] else 0}')
-        self.goto_next_day()
-        self.medicine_ware_house.update_quantities()
-        self.request_medicines()
-    
-    def receive_orders(self):
-        self.db[self.curr_day] = {}
-        self.db[self.curr_day]['quantities'] = dict(self.medicine_ware_house.get_quantities())
-        self.db[self.curr_day]['requests'] = self.get_requests_status()
-        orders_cnt = randint(self.orders_min_cnt, self.orders_max_cnt)
-        self.orders_list = []
-        for _ in range(orders_cnt):
-            order = self.generate_order(is_sale=self.is_sale())
-            self.orders_list.append(order)
-    
-    def deliver_orders(self):
-        self.delivery_service.distribute(self.orders_list)
-        self.db['couriers_overloading'][self.curr_day] = self.delivery_service.get_overloading()
-    
-    def generate_customer(self):
-        name = self.customer_names[randint(0, len(self.customer_names) - 1)]
-        address = self.customer_addresses[randint(0, len(self.customer_addresses) - 1)]
-        phone_number = self.generate_phone()
-        customer = '_'.join([name, address, phone_number])
-        if customer in self.db['regular_medicines']:
-            discount_id = self.db['discount_ids'][customer]
-        else:
-            discount_id = self.generate_discount_id(random=True)
-        
-        return '_'.join([name, address, phone_number]), discount_id
-    
-    def generate_medicine(self, medicines_set=None):
-        if medicines_set is None:
-            name = self.medicine_names[randint(0, len(self.medicine_names) - 1)]
-            form = self.medicine_forms[randint(0, len(self.medicine_forms) - 1)]
-            dosage = str(randint(self.medicine_min_dosage, self.medicine_max_dosage))
-            medicine = '_'.join([name, form, dosage])
-            if medicine not in self.db['ttls']:
-                ttl = randint(self.medicine_min_ttl, self.medicine_max_ttl)
-                self.db['ttls'][medicine] = ttl
-            else:
-                ttl = self.db['ttls'][medicine]
-            produced_time = self.curr_day
-            return Medicine(name, form, dosage, ttl, produced_time)
-        else:
-            return [x.change(produced_time=self.curr_day) for x in medicines_set][randint(0, len(medicines_set) - 1)]
-    
-    def get_requests_status(self):
-        requests = []
-        for key, value in self.request.items():
-            if value != -1:
-                requests.append(':'.join([str(key), str(value)]))
-        return requests
-    
-    def generate_phone(self):
-        return '+7' + ''.join([str(x) for x in sample(range(0, 10), 10)])
-    
-    def generate_discount_id(self, random=True):
-        if random:
-            idx = 1 if (randint(1, 100) / 100) < self.discount_id_probability else 0
-            return [None, self.generate_discount_id(random=False)][idx]
-        
-        return ''.join([str(x) for x in sample(range(0, 10), 5)])
-    
-    
-    def init(self):
-        self.init_db()
-        self.generate_medicine_warehouse()
-        self.generate_medicines_costs()
-        self.generate_regular_customers()
-        self.generate_delivery_service()
-        
-    def init_db(self):
-        self.db['regular_medicines'] = {}
-        self.db['discount_ids'] = {}
-        self.db['medicines_costs'] = {}
-        self.db['ttls'] = {}
-        self.db['incomes'] = {}
-        self.db['expenses'] = {}
-        self.db['couriers_overloading'] = {}
-    
-    def generate_regular_customers(self):
-        names = sample(self.customer_names, self.n_regular_customers)
-        addresses = sample(self.customer_addresses, self.n_regular_customers)
-        phones, discount_ids = set(), set()
-        while len(phones) < len(names):
-            phones.add(self.generate_phone())
-        while len(discount_ids) < len(names):
-            discount_ids.add(self.generate_discount_id())
-        phones, discount_ids = list(phones), list(discount_ids)
-        medicines_set = self.medicine_ware_house.get_medicines_set()
-        for name, address, phone, discount_id in zip(names, addresses, phones, discount_ids):
-            regular_medicines = [
-                (medicines_set[randint(0, len(medicines_set) - 1)], randint(1, self.order_max_medicines),
-                 randint(self.medicine_min_period, self.medicine_max_period)) for _ in
-                range(randint(1, self.order_max_medicines_quantity))
-            ]
-            customer = '_'.join([name, address, phone])
-            self.db['regular_medicines'][customer] = regular_medicines
-            self.db['discount_ids'][customer] = discount_id
-    
+    def request_medicines(self):
+        required_medicines = self.medicine_ware_house.medicines_to_request
+        for medicine, is_required in required_medicines.items():
+            if is_required:
+                if medicine not in self.request or self.request[medicine] == -1:
+                    self.request[medicine] = randint(self.request_time_min, self.request_time_max)
+
     def medicine_by_id_rand(self, medicine: str):
         name, form, dosage = medicine.split('_')
         form = form if sample([True, False], 1)[0] else None
@@ -290,7 +234,11 @@ class Model(object):
         dosage = None if dosage == 'None' else dosage
         ttl = self.db['ttls'][id]
         return Medicine(name, form, dosage, ttl, self.curr_day)
-    
+
+    def is_sale(self):
+        idx = 0 if randint(1, 100) > 35 else 1
+        return [True, False][idx]
+        
     def generate_order(self, is_sale=True, from_available=True):
         customer, discount_id = self.generate_customer()
         name, address, phone = customer.split('_')
@@ -309,6 +257,50 @@ class Model(object):
         
         return Order(phone, address, order, discount_id, is_sale)
 
+    def generate_customer(self):
+        name = self.customer_names[randint(0, len(self.customer_names) - 1)]
+        address = self.customer_addresses[randint(0, len(self.customer_addresses) - 1)]
+        phone_number = self.generate_phone()
+        customer = '_'.join([name, address, phone_number])
+        if customer in self.db['regular_medicines']:
+            discount_id = self.db['discount_ids'][customer]
+        else:
+            discount_id = self.generate_discount_id(random=True)
+    
+        return '_'.join([name, address, phone_number]), discount_id
+
+    def generate_medicine(self, medicines_set=None):
+        if medicines_set is None:
+            name = self.medicine_names[randint(0, len(self.medicine_names) - 1)]
+            form = self.medicine_forms[randint(0, len(self.medicine_forms) - 1)]
+            dosage = str(randint(self.medicine_min_dosage, self.medicine_max_dosage))
+            medicine = '_'.join([name, form, dosage])
+            if medicine not in self.db['ttls']:
+                ttl = randint(self.medicine_min_ttl, self.medicine_max_ttl)
+                self.db['ttls'][medicine] = ttl
+            else:
+                ttl = self.db['ttls'][medicine]
+            produced_time = self.curr_day
+            return Medicine(name, form, dosage, ttl, produced_time)
+        else:
+            return [x.change(produced_time=self.curr_day) for x in medicines_set][randint(0, len(medicines_set) - 1)]
+
+    def get_requests_status(self):
+        requests = []
+        for key, value in self.request.items():
+            if value != -1:
+                requests.append(':'.join([str(key), str(value)]))
+        return requests
+
+    def generate_phone(self):
+        return '+7' + ''.join([str(x) for x in sample(range(0, 10), 10)])
+
+    def generate_discount_id(self, random=True):
+        if random:
+            idx = 1 if (randint(1, 100) / 100) < self.discount_id_probability else 0
+            return [None, self.generate_discount_id(random=False)][idx]
+    
+        return ''.join([str(x) for x in sample(range(0, 10), 5)])
 
 if __name__ == '__main__':
     model = Model()
