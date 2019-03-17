@@ -116,6 +116,8 @@ class Model(object):
                 discount = min(self.max_discount, discount + self.discount_for_regular)
             income = income * (1 - discount)
             daily_income += income
+        orders_cnt['total'] = sum(orders_cnt.values())
+        resolved_orders_cnt['total'] = sum(resolved_orders_cnt.values())
         self.db['incomes'][self.curr_day] = daily_income
         self.db[self.curr_day]['orders'] = orders
         self.db[self.curr_day]['resolved_orders'] = resolved_orders
@@ -137,11 +139,7 @@ class Model(object):
                 self.orders_list.append(Order(phone, address, order, discount_id, is_sale=False, regular=True))
     
     def run(self):
-        self.init_db()
-        self.generate_medicine_warehouse()
-        self.generate_medicines_costs()
-        self.generate_regular_customers()
-        self.generate_delivery_service()
+        self.init()
         for day in range(self.total_days):
             self.run_day()
     
@@ -243,6 +241,14 @@ class Model(object):
         
         return ''.join([str(x) for x in sample(range(0, 10), 5)])
     
+    
+    def init(self):
+        self.init_db()
+        self.generate_medicine_warehouse()
+        self.generate_medicines_costs()
+        self.generate_regular_customers()
+        self.generate_delivery_service()
+        
     def init_db(self):
         self.db['regular_medicines'] = {}
         self.db['discount_ids'] = {}
