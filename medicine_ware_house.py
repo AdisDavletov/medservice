@@ -1,6 +1,5 @@
-MIN_COST, MAX_COST = 100, 10000
-REQUEST_NUM = 30
 from random import randint
+
 
 class Stock(object):
     def __init__(self, elements_set):
@@ -21,7 +20,6 @@ class Stock(object):
         return quantities
     
     def get_elements_set(self):
-        # return [tuple(x.id().split('_')) for x in self.elements_set]
         return [x for x in self.elements_set]
     
     def get_available_elements(self):
@@ -57,30 +55,22 @@ class SortedStock(Stock):
         to_del = len([x for x in self.stock if x.ttl <= 0])
         [self.stock.pop(0) for _ in range(to_del)]
         self.quantities = self.get_quantities()
-        # self.stock = self.stock[len(to_del):]
-        # for x in to_del:
-        #     self.quantities[x.id()] -= 1
     
     def add_element(self, element, quantity=1):
         assert element in self.elements_set, print(f'{element.id()} is unknown to this stock')
         
         self.stock = sorted(self.stock + [element] * quantity, key=lambda x: x.ttl)
         self.quantities = self.get_quantities()
-        # self.quantities[element.id()] += quantity
     
     def add_elements(self, elements):
         assert all([x in self.elements_set for x in elements]), print(f'encountered unknown element')
         
         self.stock = sorted(self.stock + elements, key=lambda x: x.ttl)
         self.quantities = self.get_quantities()
-        # for x in elements:
-        #     self.quantities[x.id()] += 1
     
     def extract_element(self, element, quantity=1):
         result = [i for i, x in enumerate(self.stock) if x == element][:quantity]
         result = [self.stock.pop(result[0]) for _ in result]
-        # self.stock = self.stock[len(result):]
-        # self.quantities[element.id()] -= len(result)
         self.quantities = self.get_quantities()
         return result, quantity - (quantity - len(result))
     
@@ -91,9 +81,6 @@ class SortedStock(Stock):
     
     def get_top(self, top):
         result = [self.stock.pop(0) for i in range(top)]
-        # self.stock = self.stock[top:]
-        # for x in result:
-        #     self.quantities[x.id()] -= 1
         self.quantities = self.get_quantities()
         return result
 
@@ -120,7 +107,6 @@ class MedicineWareHouse(object):
     
     def add_medicine(self, medicine, quantity=1):
         self.stock.add_elements([medicine] * quantity)
-        # self.update_quantities()
     
     def get_medicine(self, medicine, quantity=1, is_sale=True):
         if isinstance(medicine, str):
@@ -128,7 +114,7 @@ class MedicineWareHouse(object):
             form = None if form == 'None' else form
             dosage = None if dosage == 'None' else dosage
             medicine = Medicine(name, form, dosage)
-
+        
         medicines = [x for x in self.medicines_set if self.medicine_equality(x, medicine)]
         if len(medicines) == 0:
             return [], 0
@@ -144,9 +130,9 @@ class MedicineWareHouse(object):
                 new_result = self.stock.extract_element(element=medicine, quantity=new_quantity)
             result.extend(new_result[0])
             res_quantity += new_result[1]
-
+        
         return result, quantity - (quantity - res_quantity)
-
+    
     def update_quantities(self):
         stock_quantities = self.stock.get_quantities()
         sale_quantities = self.sale_stock.get_quantities()
@@ -180,11 +166,12 @@ class MedicineWareHouse(object):
         else:
             eq = medicine.id() == other.id()
         return eq
-
+    
     def get_quantities(self):
         self.update_quantities()
         return self.quantities
-    
+
+
 class Medicine(object):
     def __init__(self, name, form, dosage,
                  ttl=180, produced_time=0):
@@ -206,13 +193,11 @@ class Medicine(object):
     def change(self, **kwargs):
         for key, value in kwargs:
             setattr(self, key, value)
-        # ttl = kwargs.get('ttl')
-        # if ttl is not None:
-        #     self.ttl = ttl
         return self
     
     def __repr__(self):
         return self.id()
+
 
 class Order(object):
     def __init__(self, phone_number, address, order, discount_id=None, is_sale=True, regular=False):
@@ -222,10 +207,10 @@ class Order(object):
         self.discount_id = discount_id
         self.is_sale = is_sale
         self.regular = regular
-        
+    
     def __repr__(self):
         return str(self.order)
-
+    
     def id(self):
         return '_'.join([self.phone_number, self.address])
 
@@ -238,5 +223,3 @@ if __name__ == '__main__':
     whouse.add_medicine(Medicine('s', 't', 1), 20)
     whouse.add_medicine(Medicine('d', 't', 1), 20)
     res = whouse.get_medicine(Medicine('d', 't', 1), 44, is_sale=False)
-    
-    print(res)
