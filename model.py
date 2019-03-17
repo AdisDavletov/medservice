@@ -6,17 +6,23 @@ from medicine_ware_house import MedicineWareHouse, Order, Medicine
 
 
 class Model(object):
-    def __init__(self, medicines_cnt=10, couriers_cnt=9,
-                 total_days=45, orders_min_cnt=9, orders_max_cnt=15,
-                 extra_cost=0.25, discount=0.05):
+    def __init__(self, medicines_cnt=10, min_couriers_cnt=1,
+                 total_days=45, orders_min_cnt=4, orders_max_cnt=7,
+                 extra_cost=0.25, discount=0.05, time_exceeded_discount=0.5):
         self.medicines_cnt = medicines_cnt
-        self.couriers_cnt = couriers_cnt
+        self.min_couriers_cnt = min_couriers_cnt
         self.total_days = total_days
         self.orders_min_cnt = orders_min_cnt
         self.orders_max_cnt = orders_max_cnt
         self.curr_day = 1
         self.extra_cost = extra_cost
         self.discount = discount
+        self.discount_for_regular = 0.05
+        self.max_discount = 0.09
+        self.discount_for_big_sum = 0.03
+        self.min_orders_pc = 2
+        self.max_orders_pc = 4
+        self.time_exceeded_discount = time_exceeded_discount
         self.delivery_service = None
         self.medicine_ware_house = None
         
@@ -78,14 +84,15 @@ class Model(object):
             self.db['medicines_costs'][medicine.id()] = randint(self.medicine_min_price, self.medicine_max_price)
     
     def generate_delivery_service(self):
-        self.delivery_service = DeliveryService(max_couriers=5, min_orders_pc=7, max_orders_pc=13)
+        self.delivery_service = DeliveryService(min_couriers=self.min_couriers_cnt, min_orders_pc=self.min_orders_pc,
+                                                max_orders_pc=self.max_orders_pc)
     
     def handle_orders(self):
         daily_income = 0.0
         orders, orders_cnt = defaultdict(set), defaultdict(int)
         resolved_orders, resolved_orders_cnt = defaultdict(set), defaultdict(int)
         for order in self.orders_list:
-            scale = 0.5 if order.is_sale else 1.0
+            scale = self.time_exceeded_discount if order.is_sale else 1.0
             income = 0.0
             discount = 0.0
             for medicine, quantity in order.order:
@@ -100,11 +107,11 @@ class Model(object):
                     resolved_orders_cnt[medicines[0].id()] += quantity
             income *= (1 + self.extra_cost)
             if order.discount_id is not None:
-                discount = 0.05
+                discount = self.discount
             elif income > 1000.0:
-                discount = 0.03
+                discount = self.discount_for_big_sum
             if order.regular:
-                discount = min(0.09, discount + 0.05)
+                discount = min(self.max_discount, discount + self.discount_for_regular)
             income = income * (1 - discount)
             daily_income += income
         self.db['incomes'][self.curr_day] = daily_income
@@ -115,7 +122,7 @@ class Model(object):
         # if daily_income == 0.0:
         #     raise ValueError()
     
-    def handle_regular_orders(self):
+    def add_regular_orders(self):
         for customer in self.db['regular_medicines']:
             order = []
             for medicine, quantity, period in self.db['regular_medicines'][customer]:
@@ -134,18 +141,9 @@ class Model(object):
         self.generate_regular_customers()
         self.generate_delivery_service()
         for day in range(self.total_days):
-            self.fulfill_request()
             self.run_day()
-            self.handle_regular_orders()
-            self.handle_orders()
-            self.deliver_orders()
-            print(f'day: {self.curr_day}\nincome: {self.db["incomes"][self.curr_day]}')
-            self.goto_next_day()
-            self.medicine_ware_house.update_quantities()
-            self.request_medicines()
     
     def fulfill_request(self):
-        
         for medicine in self.request:
             if self.request[medicine] == 0:
                 self.request[medicine] = -1
@@ -169,13 +167,24 @@ class Model(object):
                 self.request[medicine] -= 1
     
     def is_sale(self):
-        idx = 0 if randint(1, 100) > 40 else 1
+        idx = 0 if randint(1, 100) > 35 else 1
         return [True, False][idx]
     
     def run_day(self):
+        self.fulfill_request()
+        self.receive_orders()
+        self.add_regular_orders()
+        self.handle_orders()
+        self.deliver_orders()
+        print(f'day: {self.curr_day}\nincome: {self.db["incomes"][self.curr_day]}')
+        self.goto_next_day()
+        self.medicine_ware_house.update_quantities()
+        self.request_medicines()
+    
+    def receive_orders(self):
         self.db[self.curr_day] = {}
         self.db[self.curr_day]['quantities'] = dict(self.medicine_ware_house.get_quantities())
-        self.db[self.curr_day]['requests'] = dict(self.request)
+        self.db[self.curr_day]['requests'] = self.get_requests_status()
         orders_cnt = randint(self.orders_min_cnt, self.orders_max_cnt)
         self.orders_list = []
         for _ in range(orders_cnt):
@@ -185,7 +194,7 @@ class Model(object):
     def deliver_orders(self):
         self.delivery_service.distribute(self.orders_list)
         self.db['couriers_overloading'][self.curr_day] = self.delivery_service.get_overloading()
-    
+
     def generate_customer(self):
         name = self.customer_names[randint(0, len(self.customer_names) - 1)]
         address = self.customer_addresses[randint(0, len(self.customer_addresses) - 1)]
