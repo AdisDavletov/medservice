@@ -9,6 +9,10 @@ class DeliveryService(object):
         for _ in range(self.min_couriers):
             self.hire()
     
+    def get_overloading(self):
+        total_orders = sum([x.n_orders_done for x in self.couriers_list])
+        return total_orders / self.max_orders_pc
+    
     def goto_next_day(self):
         self.couriers_list = [x.reset() for x in self.couriers_list]
     
