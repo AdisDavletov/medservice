@@ -7,24 +7,25 @@ from medicine_ware_house import MedicineWareHouse, Order, Medicine
 
 class Model(object):
     def __init__(self, medicines_cnt=10, min_couriers_cnt=1,
-                 total_days=45, orders_min_cnt=4, orders_max_cnt=7,
-                 extra_cost=0.25, discount=0.05, time_exceeded_discount=0.5):
+                 total_days=45, orders_min_cnt=4, orders_cnt_max_diff=15,
+                 extra_cost=0.25, discount=0.05, last_month_discount=0.5):
         self.medicines_cnt = medicines_cnt
         self.min_couriers_cnt = min_couriers_cnt
         self.total_days = total_days
-        self.orders_min_cnt = orders_min_cnt
-        self.orders_max_cnt = orders_max_cnt
         self.curr_day = 1
         self.extra_cost = extra_cost
         self.discount = discount
+        self.big_sum = 1000.0
         self.discount_for_regular = 0.05
         self.max_discount = 0.09
         self.discount_for_big_sum = 0.03
         self.min_orders_pc = 2
         self.max_orders_pc = 4
-        self.time_exceeded_discount = time_exceeded_discount
+        self.last_month_discount = last_month_discount
         self.delivery_service = None
         self.medicine_ware_house = None
+        self.orders_min_cnt = orders_min_cnt // self.extra_cost
+        self.orders_max_cnt = self.orders_min_cnt + randint(7, orders_cnt_max_diff)
         
         self.medicine_names = ["Белосалик", "Акридерм", "Бепантен", "Декспантенол", "Бетасерк",
                                "Быструмгель", "Кетопрофен", "Диклофенак", "Вольтарен", "Гастрозол",
@@ -67,6 +68,7 @@ class Model(object):
         self.request_time_min = 1
         self.request_time_max = 3
         self.db = {}
+        
     
     def generate_medicine_warehouse(self):
         medicines_set = set()
@@ -92,7 +94,7 @@ class Model(object):
         orders, orders_cnt = defaultdict(set), defaultdict(int)
         resolved_orders, resolved_orders_cnt = defaultdict(set), defaultdict(int)
         for order in self.orders_list:
-            scale = self.time_exceeded_discount if order.is_sale else 1.0
+            scale = self.last_month_discount if order.is_sale else 1.0
             income = 0.0
             discount = 0.0
             for medicine, quantity in order.order:
@@ -108,7 +110,7 @@ class Model(object):
             income *= (1 + self.extra_cost)
             if order.discount_id is not None:
                 discount = self.discount
-            elif income > 1000.0:
+            elif income > self.big_sum:
                 discount = self.discount_for_big_sum
             if order.regular:
                 discount = min(self.max_discount, discount + self.discount_for_regular)
@@ -176,7 +178,8 @@ class Model(object):
         self.add_regular_orders()
         self.handle_orders()
         self.deliver_orders()
-        print(f'day: {self.curr_day}\nincome: {self.db["incomes"][self.curr_day]}')
+        print(
+            f'day: {self.curr_day}\nincome: {self.db["incomes"][self.curr_day]}, expenses: {self.db["expenses"][self.curr_day] if self.curr_day in self.db["expenses"] else 0}')
         self.goto_next_day()
         self.medicine_ware_house.update_quantities()
         self.request_medicines()
@@ -194,7 +197,7 @@ class Model(object):
     def deliver_orders(self):
         self.delivery_service.distribute(self.orders_list)
         self.db['couriers_overloading'][self.curr_day] = self.delivery_service.get_overloading()
-
+    
     def generate_customer(self):
         name = self.customer_names[randint(0, len(self.customer_names) - 1)]
         address = self.customer_addresses[randint(0, len(self.customer_addresses) - 1)]
@@ -305,4 +308,4 @@ if __name__ == '__main__':
     model = Model()
     model.run()
     
-    print('exit!')
+    print('good bye!')
