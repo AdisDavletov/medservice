@@ -53,7 +53,7 @@ class Model(object):
         
         self.order_max_medicines_quantity = 5
         self.order_max_medicines = 4
-        self.request_inst_cnt = 30
+        self.request_inst_cnt = 66
         self.medicine_ware_house_min_inst = 5
         
         self.customer_names = ["Маша", "Петя", "Паша", "Катя", "Марина",
@@ -444,15 +444,15 @@ class Application(tk.Frame):
             self.text.insert(tk.END, f'\nRESOLVED ORDERS\n{self.model.db[i + 1]["resolved_orders"].items()}\n')
     
     def show_incomes(self):
+        # self.clear_output()
         self.generate_plot(self.model.db['incomes'])
         # self.img = tk.PhotoImage(file='tmp_plot.png')
-        self.clear_output()
         # self.text.image_create(1.0, image=self.img)
     
     def show_expenses(self):
+        # self.clear_output()
         self.generate_plot(self.model.db['expenses'])
         # self.img = tk.PhotoImage(file='tmp_plot.png')
-        self.clear_output()
         # self.text.image_create(1.0, image=self.img)
     
     def exit(self):
