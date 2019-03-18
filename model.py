@@ -47,7 +47,7 @@ class Model(object):
         
         self.medicine_min_period = 3
         self.medicine_max_period = 7
-
+        
         self.order_max_medicines_quantity = 5
         self.order_max_medicines = 4
         self.request_inst_cnt = 30
@@ -67,9 +67,8 @@ class Model(object):
         self.request_time_min = 1
         self.request_time_max = 3
         self.db = {}
-      
+    
     def run(self):
-        self.init()
         for day in range(self.total_days):
             self.run_day()
     
@@ -145,7 +144,7 @@ class Model(object):
                 medicine = self.medicine_by_id(medicine)
                 self.medicine_ware_house.add_medicine(medicine, self.request_inst_cnt)
                 self.db['expenses'][self.curr_day] = self.db['medicines_costs'][medicine.id()] * self.request_inst_cnt
-                
+    
     def receive_orders(self):
         self.db[self.curr_day] = {}
         self.db[self.curr_day]['quantities'] = dict(self.medicine_ware_house.get_quantities())
@@ -155,19 +154,19 @@ class Model(object):
         for _ in range(orders_cnt):
             order = self.generate_order(is_sale=self.is_sale())
             self.orders_list.append(order)
-
+    
     def add_regular_orders(self):
         for customer in self.db['regular_medicines']:
             order = []
             for medicine, quantity, period in self.db['regular_medicines'][customer]:
-            
+                
                 if self.curr_day % period == 0:
                     order.append((medicine, quantity))
             if len(order) > 0:
                 name, address, phone = customer.split('_')
                 discount_id = self.db['discount_ids'][customer]
                 self.orders_list.append(Order(phone, address, order, discount_id, is_sale=False, regular=True))
-
+    
     def handle_orders(self):
         daily_income = 0.0
         orders, orders_cnt = defaultdict(set), defaultdict(int)
@@ -202,11 +201,11 @@ class Model(object):
         self.db[self.curr_day]['resolved_orders'] = resolved_orders
         self.db[self.curr_day]['orders_cnt'] = orders_cnt
         self.db[self.curr_day]['resolved_orders_cnt'] = resolved_orders_cnt
-
+    
     def deliver_orders(self):
         self.delivery_service.distribute(self.orders_list)
         self.db['couriers_overloading'][self.curr_day] = self.delivery_service.get_overloading()
-
+    
     def goto_next_day(self):
         self.curr_day += 1
         self.medicine_ware_house.goto_next_day()
@@ -221,7 +220,7 @@ class Model(object):
             if is_required:
                 if medicine not in self.request or self.request[medicine] == -1:
                     self.request[medicine] = randint(self.request_time_min, self.request_time_max)
-
+    
     def medicine_by_id_rand(self, medicine: str):
         name, form, dosage = medicine.split('_')
         form = form if sample([True, False], 1)[0] else None
@@ -234,11 +233,11 @@ class Model(object):
         dosage = None if dosage == 'None' else dosage
         ttl = self.db['ttls'][id]
         return Medicine(name, form, dosage, ttl, self.curr_day)
-
+    
     def is_sale(self):
         idx = 0 if randint(1, 100) > 35 else 1
         return [True, False][idx]
-        
+    
     def generate_order(self, is_sale=True, from_available=True):
         customer, discount_id = self.generate_customer()
         name, address, phone = customer.split('_')
@@ -256,7 +255,7 @@ class Model(object):
         order = [(x, c) for x, c in zip(ordered_medicines, quantities)]
         
         return Order(phone, address, order, discount_id, is_sale)
-
+    
     def generate_customer(self):
         name = self.customer_names[randint(0, len(self.customer_names) - 1)]
         address = self.customer_addresses[randint(0, len(self.customer_addresses) - 1)]
@@ -266,9 +265,9 @@ class Model(object):
             discount_id = self.db['discount_ids'][customer]
         else:
             discount_id = self.generate_discount_id(random=True)
-    
+        
         return '_'.join([name, address, phone_number]), discount_id
-
+    
     def generate_medicine(self, medicines_set=None):
         if medicines_set is None:
             name = self.medicine_names[randint(0, len(self.medicine_names) - 1)]
@@ -284,26 +283,129 @@ class Model(object):
             return Medicine(name, form, dosage, ttl, produced_time)
         else:
             return [x.change(produced_time=self.curr_day) for x in medicines_set][randint(0, len(medicines_set) - 1)]
-
+    
     def get_requests_status(self):
         requests = []
         for key, value in self.request.items():
             if value != -1:
                 requests.append(':'.join([str(key), str(value)]))
         return requests
-
+    
     def generate_phone(self):
         return '+7' + ''.join([str(x) for x in sample(range(0, 10), 10)])
-
+    
     def generate_discount_id(self, random=True):
         if random:
             idx = 1 if (randint(1, 100) / 100) < self.discount_id_probability else 0
             return [None, self.generate_discount_id(random=False)][idx]
-    
+        
         return ''.join([str(x) for x in sample(range(0, 10), 5)])
 
-if __name__ == '__main__':
-    model = Model()
-    model.run()
+
+import tkinter as tk
+
+
+class Application(tk.Frame):
+    def __init__(self, root, model):
+        super().__init__(root)
+        self.root = root
+        self.model = model
+        
+        self.build_gui()
     
+    def params_widgets(self):
+        self.params_frame = tk.Frame(self.upper_root, bg='white', borderwidth=1, relief=tk.SUNKEN)
+        self.params_frame.pack(side=tk.RIGHT)
+        self.params_total_days = tk.Scale(self.params_frame, orient=tk.HORIZONTAL, length=200,
+                                          from_=20, to=180, tickinterval=30, resolution=10, bd=2)
+        self.params_extra_cost = tk.Scale(self.params_frame, orient=tk.HORIZONTAL, length=200,
+                                          from_=0.01, to=1.0, tickinterval=0.2, resolution=0.01, bd=2)
+        self.params_discount = tk.Scale(self.params_frame, orient=tk.HORIZONTAL, length=200,
+                                        from_=0.01, to=0.07, tickinterval=0.03, resolution=0.01, bd=2)
+        self.params_medicines_cnt = tk.Scale(self.params_frame, orient=tk.HORIZONTAL, length=200,
+                                             from_=10, to=100, tickinterval=15, resolution=1, bd=2)
+        self.params_couriers_cnt = tk.Scale(self.params_frame, orient=tk.HORIZONTAL, length=200,
+                                            from_=5, to=20, tickinterval=5, resolution=1, bd=2)
+        self.params_total_days_l = tk.Label(self.params_frame, text='колич. дней:', font='Arial 18', bg='white',
+                                            fg='black')
+        self.params_extra_cost_l = tk.Label(self.params_frame, text=u'наценка:', font='Arial 18', bg='white',
+                                            fg='black')
+        self.params_discount_l = tk.Label(self.params_frame, text=u'скидка:', font='Arial 18', bg='white',
+                                          fg='black')
+        self.params_medicines_cnt_l = tk.Label(self.params_frame, text=u'колич. лекарств:', font='Arial 18',
+                                               bg='white', fg='black')
+        self.params_couriers_cnt_l = tk.Label(self.params_frame, text=u'макс. колич. курьеров:', font='Arial 18',
+                                              bg='white', fg='black')
+        
+        self.params_total_days.grid(row=0, column=1, padx=7)
+        self.params_total_days_l.grid(row=0, column=0, padx=7)
+        self.params_extra_cost.grid(row=1, column=1, padx=7)
+        self.params_extra_cost_l.grid(row=1, column=0, padx=7)
+        self.params_discount.grid(row=2, column=1, padx=7)
+        self.params_discount_l.grid(row=2, column=0, padx=7)
+        self.params_medicines_cnt.grid(row=3, column=1, padx=7)
+        self.params_medicines_cnt_l.grid(row=3, column=0, padx=7)
+        self.params_couriers_cnt.grid(row=4, column=1, padx=7)
+        self.params_couriers_cnt_l.grid(row=4, column=0, padx=7)
+        #
+        # self.params_total_days.pack(pady=1, padx=1, side=tk.RIGHT)
+        # self.params_total_days_l.pack(pady=1, padx=1, side=tk.LEFT)
+        # self.params_extra_cost.pack(pady=1, padx=1, side=tk.RIGHT)
+        # self.params_extra_cost_l.pack(pady=1, padx=1, side=tk.LEFT)
+        # self.params_discount.pack(pady=1, padx=1, side=tk.RIGHT)
+        # self.params_discount_l.pack(pady=1, padx=1, side=tk.LEFT)
+        # self.params_medicines_cnt.pack(pady=1, padx=1, side=tk.RIGHT)
+        # self.params_medicines_cnt_l.pack(pady=1, padx=1, side=tk.LEFT)
+        # self.params_couriers_cnt.pack(pady=1, padx=1, side=tk.RIGHT)
+        # self.params_couriers_cnt_l.pack(pady=1, padx=1, side=tk.LEFT)
+    
+    def com_widgets(self):
+        self.com_frame = tk.Frame(self.upper_root, bg='white', height=240, borderwidth=1, relief=tk.FLAT)
+        self.com_frame.pack(side=tk.LEFT)
+        self.button_launch = tk.Button(self.com_frame, text='Запустить', fg='blue')
+        # self.button_launch.grid(row=0, column=1, pady=10)
+        self.button_next_day = tk.Button(self.com_frame, text='Следующий день', fg='blue')
+        # self.button_next_day.grid(row=1, column=1, pady=10)
+        self.button_show_logs = tk.Button(self.com_frame, text='Показать логи', fg='blue')
+        # self.button_show_logs.grid(row=2, column=1, pady=10)
+        self.button_show_incomes = tk.Button(self.com_frame, text='Показать прибыль', fg='blue')
+        # self.button_show_incomes.grid(row=3, column=1, pady=10)
+        self.button_show_expenses = tk.Button(self.com_frame, text='Показать убыль', fg='blue')
+        # self.button_show_expenses.grid(row=4, column=1, pady=10)
+        self.button_launch.pack(padx=10, pady=10)
+        self.button_next_day.pack(padx=10, pady=10)
+        self.button_show_logs.pack(padx=10, pady=10)
+        self.button_show_incomes.pack(padx=10, pady=10)
+        self.button_show_expenses.pack(padx=10, pady=10)
+        
+    
+    def build_gui(self):
+        self.model.init()
+        self.upper_root = tk.Frame(self.root)
+        self.upper_root.grid(row=0)
+        self.lower_root = tk.Frame(self.root)
+        self.lower_root.grid(row=1)
+        self.params_widgets()
+        self.com_widgets()
+        self.graphics_frame = tk.Frame(self.root, borderwidth=1)
+        self.logs_frame = tk.Frame(self.root, borderwidth=1)
+        
+        self.graphics_frame.grid(row=1, column=1)
+        self.logs_frame.grid(row=1, column=0)
+    
+    def run(self, event):
+        self.model.run()
+    
+    def run_day(self, event):
+        self.model.run_day()
+
+
+if __name__ == '__main__':
+    root, model = tk.Tk(), Model()
+    application = Application(root, model)
+    
+    root.title('Аптека')
+    root.geometry('650x450+300+200')
+    root.resizable(True, True)
+    root.mainloop()
     print('good bye!')
