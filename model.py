@@ -1,18 +1,21 @@
+import tkinter as tk
 from collections import defaultdict
 from random import randint, sample, shuffle
+
+from matplotlib import pyplot as plt
 
 from delivery_service import DeliveryService
 from medicine_ware_house import MedicineWareHouse, Order, Medicine
 
 
 class Model(object):
-    def __init__(self, medicines_cnt=10, min_couriers_cnt=1,
+    def __init__(self, medicines_cnt=10, min_couriers_cnt=1, max_couriers_cnt=10,
                  total_days=45, orders_min_cnt=4, orders_cnt_max_diff=15,
                  extra_cost=0.25, discount=0.05, last_month_discount=0.5):
         self.medicines_cnt = medicines_cnt
         self.min_couriers_cnt = min_couriers_cnt
+        self.max_couriers_cnt = max_couriers_cnt
         self.total_days = total_days
-        self.curr_day = 1
         self.extra_cost = extra_cost
         self.discount = discount
         self.big_sum = 1000.0
@@ -62,17 +65,20 @@ class Model(object):
         streets = ['Воробьевы Горы', 'Мичуринский Проспект', 'Лебедева', 'Менделеева', 'Ломоносовский Проспект']
         self.customer_addresses = [streets[randint(0, len(streets) - 1)] + f', {randint(0, 100)}' for _ in
                                    range(100)]
-        self.request = {}
-        self.orders_list = []
+        self.request = None
+        self.orders_list = None
         self.request_time_min = 1
         self.request_time_max = 3
-        self.db = {}
+        self.db = None
     
     def run(self):
         for day in range(self.total_days):
             self.run_day()
     
     def init(self):
+        self.request = {}
+        self.orders_list = []
+        self.curr_day = 1
         self.init_db()
         self.generate_medicine_warehouse()
         self.generate_medicines_costs()
@@ -80,6 +86,7 @@ class Model(object):
         self.generate_delivery_service()
     
     def init_db(self):
+        self.db = {}
         self.db['regular_medicines'] = {}
         self.db['discount_ids'] = {}
         self.db['medicines_costs'] = {}
@@ -124,7 +131,8 @@ class Model(object):
             self.db['discount_ids'][customer] = discount_id
     
     def generate_delivery_service(self):
-        self.delivery_service = DeliveryService(min_couriers=self.min_couriers_cnt, min_orders_pc=self.min_orders_pc,
+        self.delivery_service = DeliveryService(min_couriers=self.min_couriers_cnt, max_couriers=self.max_couriers_cnt,
+                                                min_orders_pc=self.min_orders_pc,
                                                 max_orders_pc=self.max_orders_pc)
     
     def run_day(self):
@@ -302,9 +310,6 @@ class Model(object):
         return ''.join([str(x) for x in sample(range(0, 10), 5)])
 
 
-import tkinter as tk
-
-
 class Application(tk.Frame):
     def __init__(self, root, model):
         super().__init__(root)
@@ -347,37 +352,35 @@ class Application(tk.Frame):
         self.params_medicines_cnt_l.grid(row=3, column=0, padx=7)
         self.params_couriers_cnt.grid(row=4, column=1, padx=7)
         self.params_couriers_cnt_l.grid(row=4, column=0, padx=7)
-        #
-        # self.params_total_days.pack(pady=1, padx=1, side=tk.RIGHT)
-        # self.params_total_days_l.pack(pady=1, padx=1, side=tk.LEFT)
-        # self.params_extra_cost.pack(pady=1, padx=1, side=tk.RIGHT)
-        # self.params_extra_cost_l.pack(pady=1, padx=1, side=tk.LEFT)
-        # self.params_discount.pack(pady=1, padx=1, side=tk.RIGHT)
-        # self.params_discount_l.pack(pady=1, padx=1, side=tk.LEFT)
-        # self.params_medicines_cnt.pack(pady=1, padx=1, side=tk.RIGHT)
-        # self.params_medicines_cnt_l.pack(pady=1, padx=1, side=tk.LEFT)
-        # self.params_couriers_cnt.pack(pady=1, padx=1, side=tk.RIGHT)
-        # self.params_couriers_cnt_l.pack(pady=1, padx=1, side=tk.LEFT)
     
     def com_widgets(self):
         self.com_frame = tk.Frame(self.upper_root, bg='white', height=240, borderwidth=1, relief=tk.FLAT)
         self.com_frame.pack(side=tk.LEFT)
-        self.button_launch = tk.Button(self.com_frame, text='Запустить', fg='blue')
+        self.button_launch = tk.Button(self.com_frame, text='Запустить', fg='blue', command=self.run)
         # self.button_launch.grid(row=0, column=1, pady=10)
-        self.button_next_day = tk.Button(self.com_frame, text='Следующий день', fg='blue')
+        self.button_next_day = tk.Button(self.com_frame, text='Следующий день', fg='blue', command=self.run_day)
         # self.button_next_day.grid(row=1, column=1, pady=10)
-        self.button_show_logs = tk.Button(self.com_frame, text='Показать логи', fg='blue')
+        self.button_show_logs = tk.Button(self.com_frame, text='Показать логи', fg='blue', command=self.show_logs)
         # self.button_show_logs.grid(row=2, column=1, pady=10)
-        self.button_show_incomes = tk.Button(self.com_frame, text='Показать прибыль', fg='blue')
+        self.button_show_incomes = tk.Button(self.com_frame, text='Показать прибыль', fg='blue',
+                                             command=self.show_incomes)
         # self.button_show_incomes.grid(row=3, column=1, pady=10)
-        self.button_show_expenses = tk.Button(self.com_frame, text='Показать убыль', fg='blue')
+        self.button_show_expenses = tk.Button(self.com_frame, text='Показать убыль', fg='blue',
+                                              command=self.show_expenses)
         # self.button_show_expenses.grid(row=4, column=1, pady=10)
-        self.button_launch.pack(padx=10, pady=10)
-        self.button_next_day.pack(padx=10, pady=10)
-        self.button_show_logs.pack(padx=10, pady=10)
-        self.button_show_incomes.pack(padx=10, pady=10)
-        self.button_show_expenses.pack(padx=10, pady=10)
+        self.button_show_available = tk.Button(self.com_frame, text='Показать доступные лекарства', fg='blue',
+                                               command=self.show_available_meds)
+        self.button_clear = tk.Button(self.com_frame, text='Очистить', fg='blue', command=self.clear_output)
+        self.button_exit = tk.Button(self.com_frame, text='Выйти', fg='blue', command=self.exit)
         
+        self.button_launch.pack(padx=17, pady=7)
+        self.button_next_day.pack(padx=17, pady=7)
+        self.button_show_logs.pack(padx=17, pady=7)
+        self.button_show_incomes.pack(padx=17, pady=7)
+        self.button_show_expenses.pack(padx=17, pady=7)
+        self.button_show_available.pack(padx=17, pady=7)
+        self.button_clear.pack(padx=17, pady=7)
+        self.button_exit.pack(padx=17, pady=7)
     
     def build_gui(self):
         self.model.init()
@@ -387,17 +390,74 @@ class Application(tk.Frame):
         self.lower_root.grid(row=1)
         self.params_widgets()
         self.com_widgets()
-        self.graphics_frame = tk.Frame(self.root, borderwidth=1)
-        self.logs_frame = tk.Frame(self.root, borderwidth=1)
-        
-        self.graphics_frame.grid(row=1, column=1)
-        self.logs_frame.grid(row=1, column=0)
+        self.text = tk.Text(self.lower_root, bd=1, relief=tk.RAISED, font=('times', 12), wrap=tk.WORD)
+        self.text.grid(row=0, column=0)
+        scr = tk.Scrollbar(self.lower_root, command=self.text.yview)
+        self.text.configure(yscrollcommand=scr.set)
+        scr.grid(row=0, column=1)
     
-    def run(self, event):
+    def clear_output(self):
+        self.text.delete('1.0', tk.END)
+    
+    def update_model(self):
+        medicines_cnt = int(self.params_medicines_cnt.get())
+        extra_cost = float(self.params_extra_cost.get())
+        total_days = int(self.params_total_days.get())
+        discount = float(self.params_discount.get())
+        max_couriers_cnt = int(self.params_couriers_cnt.get())
+        self.model.medicines_cnt = medicines_cnt
+        self.model.extra_cost = extra_cost
+        self.model.total_days = total_days
+        self.model.discount = discount
+        self.model.max_couriers_cnt = max_couriers_cnt
+    
+    def run(self):
+        self.clear_output()
+        self.update_model()
+        self.model.init()
+        self.text.insert(1.0, f'Происходит моделирование на длительность {self.model.total_days} дней ...\n')
         self.model.run()
+        self.text.insert(tk.END, 'Моделирование завершилось!\n')
     
-    def run_day(self, event):
+    def run_day(self):
+        self.update_model()
+        self.text.insert(tk.END, f'Моделирование за {self.model.curr_day}-й день ...\n')
         self.model.run_day()
+        self.text.insert(tk.END, 'Моделирование завершилось!\n')
+    
+    def show_available_meds(self):
+        text = '\n'.join([x for x, c in self.model.medicine_ware_house.get_quantities().items() if c > 0]) + '\n'
+        self.clear_output()
+        self.text.insert(1.0, text)
+    
+    def generate_plot(self, data):
+        keys = [i + 1 for i in range(max(data.keys()))]
+        values = [data[k] if k in data else 0 for k in keys]
+        plt.plot(keys, values)
+        plt.show()
+        # plt.savefig('tmp_plot.png', dpi=240, height=100, width=120)
+    
+    def show_logs(self):
+        self.clear_output()
+        for i in range(self.model.curr_day - 1):
+            self.text.insert(tk.END, f'\nORDERS [day: {i + 1}]\n{self.model.db[i + 1]["orders"].items()}\n')
+            self.text.insert(tk.END, f'\nRESOLVED ORDERS\n{self.model.db[i + 1]["resolved_orders"].items()}\n')
+    
+    def show_incomes(self):
+        self.generate_plot(self.model.db['incomes'])
+        # self.img = tk.PhotoImage(file='tmp_plot.png')
+        self.clear_output()
+        # self.text.image_create(1.0, image=self.img)
+    
+    def show_expenses(self):
+        self.generate_plot(self.model.db['expenses'])
+        # self.img = tk.PhotoImage(file='tmp_plot.png')
+        self.clear_output()
+        # self.text.image_create(1.0, image=self.img)
+    
+    def exit(self):
+        self.clear_output()
+        self.root.destroy()
 
 
 if __name__ == '__main__':
@@ -405,7 +465,6 @@ if __name__ == '__main__':
     application = Application(root, model)
     
     root.title('Аптека')
-    root.geometry('650x450+300+200')
-    root.resizable(True, True)
+    root.geometry('700x750+300+20')
+    root.resizable(True, False)
     root.mainloop()
-    print('good bye!')

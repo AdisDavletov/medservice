@@ -28,11 +28,11 @@ class DeliveryService(object):
         for _ in delivery_list:
             idx = self.get_courier_idx()
             if self.couriers_list[idx].is_busy():
-                if self.n_hired_couriers < self.max_couriers:
+                # if self.n_hired_couriers < self.max_couriers:
                     self.hire()
                     self.couriers_list[-1].n_orders_done += 1
-                else:
-                    print('too many orders for couriers')
+                # else:
+                #     print('too many orders for couriers')
             else:
                 self.couriers_list[idx].n_orders_done += 1
 
