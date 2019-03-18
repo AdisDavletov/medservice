@@ -310,11 +310,34 @@ class Model(object):
         return ''.join([str(x) for x in sample(range(0, 10), 5)])
 
 
+class Child(tk.Toplevel):
+    def __init__(self, root, picture):
+        super().__init__(root)
+        self.title(u'Графики моделирования')
+        
+        self.img = tk.PhotoImage(file=picture)
+        h, w = self.img.height(), self.img.width()
+
+        self.geometry(f'{w}x{h+30}+300+200')
+        self.resizable(True, True)
+        self.grab_set()
+        self.focus_set()
+        
+        self.canvas = tk.Canvas(self, width=w, height=h)
+        self.canvas.pack()
+        self.canvas.create_image(0, 0, image=self.img, anchor=tk.NW)
+        self.button_exit = tk.Button(self, text='Exit', command=self.exit, fg='darkred')
+        self.button_exit.pack()
+        
+    def exit(self):
+        self.destroy()
+        
 class Application(tk.Frame):
     def __init__(self, root, model):
         super().__init__(root)
         self.root = root
         self.model = model
+        self.tmp_file = 'tmp_plot.png'
         
         self.build_gui()
     
@@ -354,33 +377,37 @@ class Application(tk.Frame):
         self.params_couriers_cnt_l.grid(row=4, column=0, padx=7)
     
     def com_widgets(self):
+        fg = 'blue'
         self.com_frame = tk.Frame(self.upper_root, bg='white', height=240, borderwidth=1, relief=tk.FLAT)
         self.com_frame.pack(side=tk.LEFT)
-        self.button_launch = tk.Button(self.com_frame, text='Запустить', fg='blue', command=self.run)
+        self.button_launch = tk.Button(self.com_frame, text='Запустить', fg=fg, command=self.run)
         # self.button_launch.grid(row=0, column=1, pady=10)
-        self.button_next_day = tk.Button(self.com_frame, text='Следующий день', fg='blue', command=self.run_day)
+        self.button_next_day = tk.Button(self.com_frame, text='Следующий день', fg=fg, command=self.run_day)
         # self.button_next_day.grid(row=1, column=1, pady=10)
-        self.button_show_logs = tk.Button(self.com_frame, text='Показать логи', fg='blue', command=self.show_logs)
+        self.button_show_overloading = tk.Button(self.com_frame, text='Показать перегрузку', fg=fg,
+                                                 command=self.show_overloading)
+        self.button_show_logs = tk.Button(self.com_frame, text='Показать логи', fg=fg, command=self.show_logs)
         # self.button_show_logs.grid(row=2, column=1, pady=10)
-        self.button_show_incomes = tk.Button(self.com_frame, text='Показать прибыль', fg='blue',
+        self.button_show_incomes = tk.Button(self.com_frame, text='Показать прибыль', fg=fg,
                                              command=self.show_incomes)
         # self.button_show_incomes.grid(row=3, column=1, pady=10)
-        self.button_show_expenses = tk.Button(self.com_frame, text='Показать убыль', fg='blue',
+        self.button_show_expenses = tk.Button(self.com_frame, text='Показать убыль', fg=fg,
                                               command=self.show_expenses)
         # self.button_show_expenses.grid(row=4, column=1, pady=10)
-        self.button_show_available = tk.Button(self.com_frame, text='Показать доступные лекарства', fg='blue',
+        self.button_show_available = tk.Button(self.com_frame, text='Показать доступные лекарства', fg=fg,
                                                command=self.show_available_meds)
-        self.button_clear = tk.Button(self.com_frame, text='Очистить', fg='blue', command=self.clear_output)
-        self.button_exit = tk.Button(self.com_frame, text='Выйти', fg='blue', command=self.exit)
-        
-        self.button_launch.pack(padx=17, pady=7)
-        self.button_next_day.pack(padx=17, pady=7)
-        self.button_show_logs.pack(padx=17, pady=7)
-        self.button_show_incomes.pack(padx=17, pady=7)
-        self.button_show_expenses.pack(padx=17, pady=7)
-        self.button_show_available.pack(padx=17, pady=7)
-        self.button_clear.pack(padx=17, pady=7)
-        self.button_exit.pack(padx=17, pady=7)
+        self.button_clear = tk.Button(self.com_frame, text='Очистить', fg=fg, command=self.clear_output)
+        self.button_exit = tk.Button(self.com_frame, text='Выйти', fg=fg, command=self.exit)
+        padx, pady = 17, 5
+        self.button_launch.pack(padx=padx, pady=pady)
+        self.button_next_day.pack(padx=padx, pady=pady)
+        self.button_show_overloading.pack(padx=padx, pady=pady)
+        self.button_show_logs.pack(padx=padx, pady=pady)
+        self.button_show_incomes.pack(padx=padx, pady=pady)
+        self.button_show_expenses.pack(padx=padx, pady=pady)
+        self.button_show_available.pack(padx=padx, pady=pady)
+        self.button_clear.pack(padx=padx, pady=pady)
+        self.button_exit.pack(padx=padx, pady=pady)
     
     def build_gui(self):
         self.model.init()
@@ -390,7 +417,7 @@ class Application(tk.Frame):
         self.lower_root.grid(row=1)
         self.params_widgets()
         self.com_widgets()
-        self.text = tk.Text(self.lower_root, bd=1, relief=tk.RAISED, font=('times', 12), wrap=tk.WORD)
+        self.text = tk.Text(self.lower_root, bd=1, relief=tk.RAISED, font=('times', 14), wrap=tk.WORD)
         self.text.grid(row=0, column=0)
         scr = tk.Scrollbar(self.lower_root, command=self.text.yview)
         self.text.configure(yscrollcommand=scr.set)
@@ -425,35 +452,41 @@ class Application(tk.Frame):
         self.model.run_day()
         self.text.insert(tk.END, 'Моделирование завершилось!\n')
     
+    def show_overloading(self):
+        self.generate_plot(self.model.db['couriers_overloading'], 'день', 'количество курьеров')
+        Child(self.lower_root, self.tmp_file)
+    
     def show_available_meds(self):
-        text = '\n'.join([x for x, c in self.model.medicine_ware_house.get_quantities().items() if c > 0]) + '\n'
+        text = '\n'.join([':'.join([x, str(c)]) for x, c in self.model.medicine_ware_house.get_quantities().items() if c > 0]) + '\n'
         self.clear_output()
         self.text.insert(1.0, text)
     
-    def generate_plot(self, data):
+    def generate_plot(self, data, xlabel, ylabel):
         keys = [i + 1 for i in range(max(data.keys()))]
         values = [data[k] if k in data else 0 for k in keys]
         plt.plot(keys, values)
-        plt.show()
-        # plt.savefig('tmp_plot.png', dpi=240, height=100, width=120)
+        plt.xlabel(xlabel=xlabel)
+        plt.ylabel(ylabel=ylabel, labelpad=-1)
+        plt.savefig(self.tmp_file, dpi=140, height=100, width=120)
+        plt.close('all')
     
     def show_logs(self):
         self.clear_output()
-        for i in range(self.model.curr_day - 1):
-            self.text.insert(tk.END, f'\nORDERS [day: {i + 1}]\n{self.model.db[i + 1]["orders"].items()}\n')
-            self.text.insert(tk.END, f'\nRESOLVED ORDERS\n{self.model.db[i + 1]["resolved_orders"].items()}\n')
+        for i in range(max(self.model.curr_day - 20, 1), self.model.curr_day):
+            orders_text = '\n'.join([': '.join([k, '\n\t' + '\n\t'.join([f'{x}:{y}' for x, y in v])]) for k, v in self.model.db[i]['orders'].items()])
+            orders_text = f'\nORDERS [day: {i + 1}]\n{orders_text}\n'
+            resolved_orders_text = '\n'.join([': '.join([k, '\n\t' + '\n\t'.join([f'{x}:{y}' for x, y in v])]) for k, v in self.model.db[i]['resolved_orders'].items()])
+            resolved_orders_text = f'\nRESOLVED ORDERS [day: {i + 1}]\n{resolved_orders_text}\n'
+            self.text.insert(tk.END, orders_text)
+            self.text.insert(tk.END, resolved_orders_text)
     
     def show_incomes(self):
-        # self.clear_output()
-        self.generate_plot(self.model.db['incomes'])
-        # self.img = tk.PhotoImage(file='tmp_plot.png')
-        # self.text.image_create(1.0, image=self.img)
+        self.generate_plot(self.model.db['incomes'], 'день', 'прибыль')
+        Child(self.root, self.tmp_file)
     
     def show_expenses(self):
-        # self.clear_output()
-        self.generate_plot(self.model.db['expenses'])
-        # self.img = tk.PhotoImage(file='tmp_plot.png')
-        # self.text.image_create(1.0, image=self.img)
+        self.generate_plot(self.model.db['expenses'], 'день', 'убыль')
+        Child(self.root, self.tmp_file)
     
     def exit(self):
         self.clear_output()
