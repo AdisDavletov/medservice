@@ -326,7 +326,7 @@ class Child(tk.Toplevel):
         self.canvas = tk.Canvas(self, width=w, height=h)
         self.canvas.pack()
         self.canvas.create_image(0, 0, image=self.img, anchor=tk.NW)
-        self.button_exit = tk.Button(self, text='Exit', command=self.exit, fg='darkred')
+        self.button_exit = tk.Button(self, text='Exit', width=50, command=self.exit, fg='darkred')
         self.button_exit.pack()
         
     def exit(self):
@@ -336,13 +336,17 @@ class Application(tk.Frame):
     def __init__(self, root, model):
         super().__init__(root)
         self.root = root
+        self.bg = 'lightgreen'
+        self.text_bg = 'lightblue'
+        self.root.configure(bg=self.bg)
         self.model = model
         self.tmp_file = 'tmp_plot.png'
         
         self.build_gui()
     
     def params_widgets(self):
-        self.params_frame = tk.Frame(self.upper_root, bg='white', borderwidth=1, relief=tk.SUNKEN)
+        l_bg = 'lightgrey'
+        self.params_frame = tk.Frame(self.upper_root, borderwidth=1, relief=tk.SUNKEN, bg='lightgrey')
         self.params_frame.pack(side=tk.RIGHT)
         self.params_total_days = tk.Scale(self.params_frame, orient=tk.HORIZONTAL, length=200,
                                           from_=20, to=180, tickinterval=30, resolution=10, bd=2)
@@ -354,51 +358,53 @@ class Application(tk.Frame):
                                              from_=10, to=100, tickinterval=15, resolution=1, bd=2)
         self.params_couriers_cnt = tk.Scale(self.params_frame, orient=tk.HORIZONTAL, length=200,
                                             from_=5, to=20, tickinterval=5, resolution=1, bd=2)
-        self.params_total_days_l = tk.Label(self.params_frame, text='колич. дней:', font='Arial 18', bg='white',
+        self.params_total_days_l = tk.Label(self.params_frame, text='колич. дней:', font='Arial 18', bg=l_bg,
                                             fg='black')
-        self.params_extra_cost_l = tk.Label(self.params_frame, text=u'наценка:', font='Arial 18', bg='white',
+        self.params_extra_cost_l = tk.Label(self.params_frame, text=u'наценка:', font='Arial 18', bg=l_bg,
                                             fg='black')
-        self.params_discount_l = tk.Label(self.params_frame, text=u'скидка:', font='Arial 18', bg='white',
+        self.params_discount_l = tk.Label(self.params_frame, text=u'скидка:', font='Arial 18', bg=l_bg,
                                           fg='black')
         self.params_medicines_cnt_l = tk.Label(self.params_frame, text=u'колич. лекарств:', font='Arial 18',
-                                               bg='white', fg='black')
+                                               bg=l_bg, fg='black')
         self.params_couriers_cnt_l = tk.Label(self.params_frame, text=u'макс. колич. курьеров:', font='Arial 18',
-                                              bg='white', fg='black')
-        
-        self.params_total_days.grid(row=0, column=1, padx=7)
-        self.params_total_days_l.grid(row=0, column=0, padx=7)
-        self.params_extra_cost.grid(row=1, column=1, padx=7)
-        self.params_extra_cost_l.grid(row=1, column=0, padx=7)
-        self.params_discount.grid(row=2, column=1, padx=7)
-        self.params_discount_l.grid(row=2, column=0, padx=7)
-        self.params_medicines_cnt.grid(row=3, column=1, padx=7)
-        self.params_medicines_cnt_l.grid(row=3, column=0, padx=7)
-        self.params_couriers_cnt.grid(row=4, column=1, padx=7)
-        self.params_couriers_cnt_l.grid(row=4, column=0, padx=7)
+                                              bg=l_bg, fg='black')
+        padx = 0
+        self.params_total_days.grid(row=0, column=1, padx=padx)
+        self.params_total_days_l.grid(row=0, column=0, padx=padx)
+        self.params_extra_cost.grid(row=1, column=1, padx=padx)
+        self.params_extra_cost_l.grid(row=1, column=0, padx=padx)
+        self.params_discount.grid(row=2, column=1, padx=padx)
+        self.params_discount_l.grid(row=2, column=0, padx=padx)
+        self.params_medicines_cnt.grid(row=3, column=1, padx=padx)
+        self.params_medicines_cnt_l.grid(row=3, column=0, padx=padx)
+        self.params_couriers_cnt.grid(row=4, column=1, padx=padx)
+        self.params_couriers_cnt_l.grid(row=4, column=0, padx=padx)
     
     def com_widgets(self):
         fg = 'blue'
-        self.com_frame = tk.Frame(self.upper_root, bg='white', height=240, borderwidth=1, relief=tk.FLAT)
-        self.com_frame.pack(side=tk.LEFT)
-        self.button_launch = tk.Button(self.com_frame, text='Запустить', fg=fg, command=self.run)
+        button_w = 25
+        
+        self.com_frame = tk.Frame(self.upper_root, height=240, borderwidth=1, relief=tk.FLAT, bg='lightgrey')
+        self.com_frame.pack(side=tk.LEFT, padx=15)
+        self.button_launch = tk.Button(self.com_frame, width=button_w, text='Запустить', fg=fg, command=self.run)
         # self.button_launch.grid(row=0, column=1, pady=10)
-        self.button_next_day = tk.Button(self.com_frame, text='Следующий день', fg=fg, command=self.run_day)
+        self.button_next_day = tk.Button(self.com_frame, text='Следующий день', fg=fg, command=self.run_day, width=button_w)
         # self.button_next_day.grid(row=1, column=1, pady=10)
         self.button_show_overloading = tk.Button(self.com_frame, text='Показать перегрузку', fg=fg,
-                                                 command=self.show_overloading)
-        self.button_show_logs = tk.Button(self.com_frame, text='Показать логи', fg=fg, command=self.show_logs)
+                                                 command=self.show_overloading, width=button_w)
+        self.button_show_logs = tk.Button(self.com_frame, text='Показать логи', fg=fg, command=self.show_logs, width=button_w)
         # self.button_show_logs.grid(row=2, column=1, pady=10)
         self.button_show_incomes = tk.Button(self.com_frame, text='Показать прибыль', fg=fg,
-                                             command=self.show_incomes)
+                                             command=self.show_incomes, width=button_w)
         # self.button_show_incomes.grid(row=3, column=1, pady=10)
         self.button_show_expenses = tk.Button(self.com_frame, text='Показать убыль', fg=fg,
-                                              command=self.show_expenses)
+                                              command=self.show_expenses, width=button_w)
         # self.button_show_expenses.grid(row=4, column=1, pady=10)
         self.button_show_available = tk.Button(self.com_frame, text='Показать доступные лекарства', fg=fg,
-                                               command=self.show_available_meds)
-        self.button_clear = tk.Button(self.com_frame, text='Очистить', fg=fg, command=self.clear_output)
-        self.button_exit = tk.Button(self.com_frame, text='Выйти', fg=fg, command=self.exit)
-        padx, pady = 17, 5
+                                               command=self.show_available_meds, width=button_w)
+        self.button_clear = tk.Button(self.com_frame, text='Очистить', fg=fg, command=self.clear_output, width=button_w)
+        self.button_exit = tk.Button(self.com_frame, text='Выйти', fg=fg, command=self.exit, width=button_w)
+        padx, pady = 0, 5
         self.button_launch.pack(padx=padx, pady=pady)
         self.button_next_day.pack(padx=padx, pady=pady)
         self.button_show_overloading.pack(padx=padx, pady=pady)
@@ -411,17 +417,14 @@ class Application(tk.Frame):
     
     def build_gui(self):
         self.model.init()
-        self.upper_root = tk.Frame(self.root)
+        self.upper_root = tk.Frame(self.root, bg=self.bg)
         self.upper_root.grid(row=0)
         self.lower_root = tk.Frame(self.root)
         self.lower_root.grid(row=1)
         self.params_widgets()
         self.com_widgets()
-        self.text = tk.Text(self.lower_root, bd=1, relief=tk.RAISED, font=('times', 14), wrap=tk.WORD)
-        self.text.grid(row=0, column=0)
-        scr = tk.Scrollbar(self.lower_root, command=self.text.yview)
-        self.text.configure(yscrollcommand=scr.set)
-        scr.grid(row=0, column=1)
+        self.text = tk.Text(self.lower_root, bd=1, relief=tk.RAISED, font=('times', 14), wrap=tk.WORD, bg=self.text_bg, width=77)
+        self.text.pack(padx=0)
     
     def clear_output(self):
         self.text.delete('1.0', tk.END)
@@ -467,6 +470,7 @@ class Application(tk.Frame):
         plt.plot(keys, values)
         plt.xlabel(xlabel=xlabel)
         plt.ylabel(ylabel=ylabel, labelpad=-1)
+        plt.ylim(bottom=0)
         plt.savefig(self.tmp_file, dpi=140, height=100, width=120)
         plt.close('all')
     
@@ -498,6 +502,6 @@ if __name__ == '__main__':
     application = Application(root, model)
     
     root.title('Аптека')
-    root.geometry('700x750+300+20')
+    root.geometry('680x750+300+20')
     root.resizable(True, False)
     root.mainloop()
