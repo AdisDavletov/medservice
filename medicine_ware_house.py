@@ -1,7 +1,7 @@
 from random import randint
 
 
-class Stock(object):
+class Stock:
     def __init__(self, elements_set):
         self.elements_set = elements_set
         self.stock = []
@@ -85,12 +85,12 @@ class SortedStock(Stock):
         return result
 
 
-class MedicineWareHouse(object):
+class MedicineWareHouse:
     def __init__(self, medicines_set, min_instances=5):
         medicines_set = set(medicines_set)
         self.medicines_set = medicines_set
-        self.stock = SortedStock(elements_set=medicines_set)
-        self.sale_stock = SortedStock(elements_set=medicines_set)
+        self.stock:SortedStock = SortedStock(elements_set=medicines_set)
+        self.sale_stock:SortedStock = SortedStock(elements_set=medicines_set)
         self.min_instances = min_instances
         self.quantities = dict((x.id(), 0) for x in medicines_set)
         self.medicines_to_request = dict((x.id(), False) for x in medicines_set)
@@ -172,7 +172,7 @@ class MedicineWareHouse(object):
         return self.quantities
 
 
-class Medicine(object):
+class Medicine:
     def __init__(self, name, form, dosage,
                  ttl=180, produced_time=0):
         self.name = name
@@ -199,7 +199,7 @@ class Medicine(object):
         return self.id()
 
 
-class Order(object):
+class Order:
     def __init__(self, phone_number, address, order, discount_id=None, is_sale=True, regular=False):
         self.phone_number = phone_number
         self.address = address
@@ -207,7 +207,7 @@ class Order(object):
         self.discount_id = discount_id
         self.is_sale = is_sale
         self.regular = regular
-    
+
     def __repr__(self):
         return str(self.order)
     

@@ -8,7 +8,7 @@ from delivery_service import DeliveryService
 from medicine_ware_house import MedicineWareHouse, Order, Medicine
 
 
-class Model(object):
+class Model:
     def __init__(self, medicines_cnt=10, min_couriers_cnt=1, max_couriers_cnt=10,
                  total_days=45, orders_min_cnt=4, orders_cnt_max_diff=15,
                  extra_cost=0.25, discount=0.05, last_month_discount=0.5):
@@ -99,7 +99,7 @@ class Model(object):
         medicines_set = set()
         while len(medicines_set) < self.medicines_cnt:
             medicines_set.add(self.generate_medicine())
-        self.medicine_ware_house = MedicineWareHouse(medicines_set,
+        self.medicine_ware_house:MedicineWareHouse = MedicineWareHouse(medicines_set,
                                                      min_instances=self.medicine_ware_house_min_inst)
         for medicine in medicines_set:
             self.medicine_ware_house.add_medicine(medicine, quantity=self.request_inst_cnt)
@@ -317,8 +317,8 @@ class Child(tk.Toplevel):
         
         self.img = tk.PhotoImage(file=picture)
         h, w = self.img.height(), self.img.width()
-
-        self.geometry(f'{w}x{h+30}+300+200')
+        
+        self.geometry(f'{w}x{h + 30}+300+200')
         self.resizable(True, True)
         self.grab_set()
         self.focus_set()
@@ -328,10 +328,11 @@ class Child(tk.Toplevel):
         self.canvas.create_image(0, 0, image=self.img, anchor=tk.NW)
         self.button_exit = tk.Button(self, text='Exit', width=50, command=self.exit, fg='darkred')
         self.button_exit.pack()
-        
+    
     def exit(self):
         self.destroy()
-        
+
+
 class Application(tk.Frame):
     def __init__(self, root, model):
         super().__init__(root)
@@ -388,11 +389,13 @@ class Application(tk.Frame):
         self.com_frame.pack(side=tk.LEFT, padx=15)
         self.button_launch = tk.Button(self.com_frame, width=button_w, text='Запустить', fg=fg, command=self.run)
         # self.button_launch.grid(row=0, column=1, pady=10)
-        self.button_next_day = tk.Button(self.com_frame, text='Следующий день', fg=fg, command=self.run_day, width=button_w)
+        self.button_next_day = tk.Button(self.com_frame, text='Следующий день', fg=fg, command=self.run_day,
+                                         width=button_w)
         # self.button_next_day.grid(row=1, column=1, pady=10)
         self.button_show_overloading = tk.Button(self.com_frame, text='Показать перегрузку', fg=fg,
                                                  command=self.show_overloading, width=button_w)
-        self.button_show_logs = tk.Button(self.com_frame, text='Показать логи', fg=fg, command=self.show_logs, width=button_w)
+        self.button_show_logs = tk.Button(self.com_frame, text='Показать логи', fg=fg, command=self.show_logs,
+                                          width=button_w)
         # self.button_show_logs.grid(row=2, column=1, pady=10)
         self.button_show_incomes = tk.Button(self.com_frame, text='Показать прибыль', fg=fg,
                                              command=self.show_incomes, width=button_w)
@@ -423,7 +426,8 @@ class Application(tk.Frame):
         self.lower_root.grid(row=1)
         self.params_widgets()
         self.com_widgets()
-        self.text = tk.Text(self.lower_root, bd=1, relief=tk.RAISED, font=('times', 14), wrap=tk.WORD, bg=self.text_bg, width=77)
+        self.text = tk.Text(self.lower_root, bd=1, relief=tk.RAISED, font=('times', 14), wrap=tk.WORD, bg=self.text_bg,
+                            width=77)
         self.text.pack(padx=0)
     
     def clear_output(self):
@@ -460,7 +464,8 @@ class Application(tk.Frame):
         Child(self.lower_root, self.tmp_file)
     
     def show_available_meds(self):
-        text = '\n'.join([':'.join([x, str(c)]) for x, c in self.model.medicine_ware_house.get_quantities().items() if c > 0]) + '\n'
+        text = '\n'.join(
+            [':'.join([x, str(c)]) for x, c in self.model.medicine_ware_house.get_quantities().items() if c > 0]) + '\n'
         self.clear_output()
         self.text.insert(1.0, text)
     
@@ -477,9 +482,12 @@ class Application(tk.Frame):
     def show_logs(self):
         self.clear_output()
         for i in range(max(self.model.curr_day - 20, 1), self.model.curr_day):
-            orders_text = '\n'.join([': '.join([k, '\n\t' + '\n\t'.join([f'{x}:{y}' for x, y in v])]) for k, v in self.model.db[i]['orders'].items()])
+            orders_text = '\n'.join([': '.join([k, '\n\t' + '\n\t'.join([f'{x}:{y}' for x, y in v])]) for k, v in
+                                     self.model.db[i]['orders'].items()])
             orders_text = f'\nORDERS [day: {i + 1}]\n{orders_text}\n'
-            resolved_orders_text = '\n'.join([': '.join([k, '\n\t' + '\n\t'.join([f'{x}:{y}' for x, y in v])]) for k, v in self.model.db[i]['resolved_orders'].items()])
+            resolved_orders_text = '\n'.join(
+                [': '.join([k, '\n\t' + '\n\t'.join([f'{x}:{y}' for x, y in v])]) for k, v in
+                 self.model.db[i]['resolved_orders'].items()])
             resolved_orders_text = f'\nRESOLVED ORDERS [day: {i + 1}]\n{resolved_orders_text}\n'
             self.text.insert(tk.END, orders_text)
             self.text.insert(tk.END, resolved_orders_text)

@@ -1,4 +1,4 @@
-class DeliveryService(object):
+class DeliveryService:
     def __init__(self, min_couriers=3, max_couriers=9, min_orders_pc=7, max_orders_pc=15):
         self.min_couriers = min_couriers
         self.max_couriers = max_couriers
@@ -37,7 +37,7 @@ class DeliveryService(object):
                 self.couriers_list[idx].n_orders_done += 1
 
 
-class Courier(object):
+class Courier:
     def __init__(self, max_orders=15):
         self.n_orders_done = 0
         self.max_orders = max_orders
